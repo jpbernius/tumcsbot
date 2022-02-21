@@ -26,7 +26,7 @@ class Group(CommandPlugin):
           or group add_streams <group_id> <stream_pattern>...
           or group remove_streams <group_id> <stream_pattern>...
           or group list
-          or group claim <group_id>
+          or group claim <group_id> [<message_id>]
           or group unclaim <group_id> <message_id>
           or group announce
           or group unannounce <message_id>
@@ -151,7 +151,7 @@ class Group(CommandPlugin):
         )
         self.command_parser.add_subcommand('list')
         self.command_parser.add_subcommand(
-            'claim', args={'group_id': str, 'text': str}, greedy = True, optional = True
+            'claim', args={'group_id': str, 'message_id': int, 'text': str}, greedy = True, optional = True
         )
         self.command_parser.add_subcommand('unclaim', args={'group_id': str, 'message_id': int})
         self.command_parser.add_subcommand('announce')
@@ -205,7 +205,7 @@ class Group(CommandPlugin):
         if command == 'claim':
             if message['type'] != 'stream':
                 return Response.build_message(message, 'Claim only stream messages.')
-            return self._claim(message, args.group_id)
+            return self._claim(message, args.group_id, args.message_id)
         if command == 'unclaim':
             return self._unclaim(message, args.group_id, args.message_id)
         if command == 'add':
@@ -410,12 +410,16 @@ class Group(CommandPlugin):
         self,
         message: Dict[str, Any],
         group_id: Optional[str],
+        message_id: Optional[int],
     ) -> Union[Response, Iterable[Response]]:
-        """Command `group claim [id]`."""
+        """Command `group claim [group_id] [message_id]`."""
+        if message_id == None or !isinstance(message_id, int):
+            message_id = message['id']
+
         if group_id:
-            self._db.execute(self._claim_group_sql, message['id'], group_id, commit = True)
+            self._db.execute(self._claim_group_sql, message_id, group_id, commit = True)
         else:
-            self._db.execute(self._claim_all_sql, message['id'], commit = True)
+            self._db.execute(self._claim_all_sql, message_id, commit = True)
 
         return Response.ok(message)
 
